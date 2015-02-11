@@ -2,7 +2,7 @@
 
 -export([start/0, stop/0]).
 -export([get_env/1, get_env/2]).
--export([is_leader/1, is_leader/2]).
+-export([is_leader/1, is_leader/2, get_leader/1, get_leader/2]).
 
 -define(APP, ?MODULE).
 
@@ -16,12 +16,19 @@ is_leader(Key) ->
     is_leader(node(), Key).
 
 is_leader(Node, Key) ->
+    MaybeLeader = get_leader(Node, Key),
+    MaybeLeader =/= no_leader andalso MaybeLeader =:= node().
+
+get_leader(Key) ->
+    get_leader(node(), Key).
+
+get_leader(Node, Key) ->
     DocIdx   = riak_core_util:chash_key(Key),
     Preflist = riak_governor_util:get_primary_apl(DocIdx),
     Nodes    = lists:usort([PrefNode || {{_Index, PrefNode}, _Type} <- Preflist]),
     case Nodes of
-        [Node] -> true;
-        [_] -> false;
+        [Node] -> Node;
+        [_] -> no_leader;
         [_|_] ->
             Name = riak_governor_util:ensemble_name(Nodes),
             ProcId = case ordsets:is_element(node(), Nodes) of
@@ -31,9 +38,9 @@ is_leader(Node, Key) ->
                              {Name, First}
                      end,
             case catch rafter:get_leader(ProcId) of
-                {_, Node} -> true;
-                {'EXIT', {noproc, _}} -> false;
-                _ -> false
+                {_, Node} -> Node;
+                {'EXIT', {noproc, _}} -> no_leader;
+                _ -> no_leader
             end
     end.
 
