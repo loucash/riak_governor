@@ -1,0 +1,1 @@
+-define(DEFAULT_ENSEMBLE_SIZE, 3).
