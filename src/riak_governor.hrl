@@ -1,1 +1,2 @@
 -define(DEFAULT_ENSEMBLE_SIZE, 3).
+-define(DEFAULT_ENSEMBLE_PROVIDER, rafter).

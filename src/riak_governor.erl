@@ -54,7 +54,7 @@ find_leader(Name, Nodes) ->
 do_find_leader(_IsLocal, _Name, []) ->
     {error, noproc};
 do_find_leader(true, Name, Nodes) ->
-    case catch rafter:get_leader(Name) of
+    case catch riak_governor_spi:get_leader(Name) of
         {'EXIT', {noproc, _}} ->
             do_find_leader(false, Name, Nodes -- [node()]);
         {_, Result} ->
@@ -63,7 +63,7 @@ do_find_leader(true, Name, Nodes) ->
             {error, no_leader}
     end;
 do_find_leader(false, Name, [Node|Rest]) ->
-    case catch rafter:get_leader({Name, Node}) of
+    case catch riak_governor_spi:get_leader({Name, Node}) of
         {'EXIT', {noproc, _}} ->
             do_find_leader(false, Name, Rest);
         {_, Result} ->
