@@ -1,4 +1,4 @@
--module(riak_rafter_ensemble_master).
+-module(riak_governor_ensemble_master).
 -behaviour(gen_server).
 
 -include_lib("rafter/include/rafter_opts.hrl").
@@ -34,7 +34,7 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-    EnsembleSize = riak_rafter_util:get_ensemble_size(),
+    EnsembleSize = riak_governor_util:get_ensemble_size(),
     RingHash = get_ring_hash(),
     _ = ets:new(?MODULE, [named_table, public]),
     timer:apply_after(500, gen_server, cast, [?MODULE, init_ensembles]),
@@ -97,13 +97,13 @@ all_ensembles(Size) ->
     lists:filter(fun(Nodes) -> length(Nodes) > 1 end, Ensembles).
 
 add_ensemble_to_index(Nodes) ->
-    ets:insert(?MODULE, {Nodes, riak_rafter_util:ensemble_name(Nodes)}).
+    ets:insert(?MODULE, {Nodes, riak_governor_util:ensemble_name(Nodes)}).
 
 ensemble_started(Nodes) ->
     ets:lookup(?MODULE, Nodes) =/= [].
 
 start_ensemble(Nodes) ->
-    EnsembleName = riak_rafter_util:ensemble_name(Nodes),
+    EnsembleName = riak_governor_util:ensemble_name(Nodes),
     Peers = lists:map(fun(Node) -> {EnsembleName, Node} end, Nodes),
     start_node(EnsembleName, Peers).
 

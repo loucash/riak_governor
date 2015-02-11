@@ -1,4 +1,4 @@
--module(riak_rafter_sup).
+-module(riak_governor_sup).
 
 -behaviour(supervisor).
 
@@ -23,4 +23,4 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [?CHILD(riak_rafter_ensemble_master, worker)]}}.
+    {ok, {{one_for_one, 5, 10}, [?CHILD(riak_governor_ensemble_master, worker)]}}.

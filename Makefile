@@ -1,4 +1,4 @@
-PROJECT := riak_rafter
+PROJECT := riak_governor
 REBAR := ./rebar
 SNAME := $(PROJECT)
 

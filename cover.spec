@@ -1,1 +1,1 @@
-{incl_app, riak_rafter, details}.
+{incl_app, riak_governor, details}.

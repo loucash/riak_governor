@@ -1,4 +1,4 @@
--module(riak_rafter).
+-module(riak_governor).
 
 -export([start/0, stop/0]).
 -export([get_env/1, get_env/2]).
@@ -17,13 +17,13 @@ is_leader(Key) ->
 
 is_leader(Node, Key) ->
     DocIdx   = riak_core_util:chash_key(Key),
-    Preflist = riak_rafter_util:get_primary_apl(DocIdx),
+    Preflist = riak_governor_util:get_primary_apl(DocIdx),
     Nodes    = lists:usort([PrefNode || {{_Index, PrefNode}, _Type} <- Preflist]),
     case Nodes of
         [Node] -> true;
         [_] -> false;
         [_|_] ->
-            Name = riak_rafter_util:ensemble_name(Nodes),
+            Name = riak_governor_util:ensemble_name(Nodes),
             ProcId = case ordsets:is_element(node(), Nodes) of
                          true -> Name;
                          false ->

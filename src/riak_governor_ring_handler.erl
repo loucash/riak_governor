@@ -1,4 +1,4 @@
--module(riak_rafter_ring_handler).
+-module(riak_governor_ring_handler).
 
 -behaviour(gen_event).
 
@@ -16,7 +16,7 @@ init([]) ->
     {ok, #state{}}.
 
 handle_event({ring_update, _Ring}, State) ->
-    riak_rafter_ensemble_master:ring_changed(),
+    riak_governor_ensemble_master:ring_changed(),
     {ok, State}.
 
 handle_call(_Event, State) ->

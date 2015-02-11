@@ -1,12 +1,12 @@
--module(riak_rafter_util).
+-module(riak_governor_util).
 
--include("riak_rafter.hrl").
+-include("riak_governor.hrl").
 
 -export([get_ensemble_size/0, ensemble_name/1]).
 -export([get_primary_apl/1]).
 
 get_ensemble_size() ->
-    riak_rafter:get_env(ensemble_size, ?DEFAULT_ENSEMBLE_SIZE).
+    riak_governor:get_env(ensemble_size, ?DEFAULT_ENSEMBLE_SIZE).
 
 ensemble_name(Nodes) when is_list(Nodes) ->
     list_to_atom(lists:flatten(lists:map(fun erlang:atom_to_list/1, Nodes))).

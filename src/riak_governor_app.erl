@@ -1,4 +1,4 @@
--module(riak_rafter_app).
+-module(riak_governor_app).
 
 -behaviour(application).
 
@@ -7,10 +7,10 @@
          stop/1]).
 
 start(_StartType, _StartArgs) ->
-    case riak_rafter_sup:start_link() of
+    case riak_governor_sup:start_link() of
         {ok, Pid} ->
             ok = riak_core_ring_events:add_guarded_handler(
-                   riak_rafter_ring_handler, []),
+                   riak_governor_ring_handler, []),
             {ok, Pid};
         {error, Reason} ->
             {error, Reason}
