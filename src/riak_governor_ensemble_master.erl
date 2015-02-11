@@ -74,13 +74,16 @@ get_ring_hash() ->
     crypto:hash(md5, term_to_binary(Ring)).
 
 ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
-    NewEnsembles = all_ensembles(EnsembleSize),
-    [begin
-         ShouldStart    = ordsets:is_element(node(), Nodes),
-         AlreadyStarted = ensemble_started(Nodes),
-         ShouldStart andalso not AlreadyStarted andalso start_ensemble(Nodes),
-         add_ensemble_to_index(Nodes)
-     end || Nodes <- NewEnsembles].
+    Ensembles0 = all_ensembles(EnsembleSize),
+    ClusterNodes = riak_governor_util:get_cluster_nodes(),
+    Ensembles = [ClusterNodes|Ensembles0],
+    [ensure_ensemble_started(Nodes) || Nodes <- Ensembles].
+
+ensure_ensemble_started(Nodes) ->
+    ShouldStart    = ordsets:is_element(node(), Nodes),
+    AlreadyStarted = ensemble_started(Nodes),
+    ShouldStart andalso not AlreadyStarted andalso start_ensemble(Nodes),
+    add_ensemble_to_index(Nodes).
 
 %% Determine the set of ensembles. Currently, there is one ensemble of each
 %% unique set of preflist owning nodes.

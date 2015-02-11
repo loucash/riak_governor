@@ -2,7 +2,7 @@
 
 -export([start/0, stop/0]).
 -export([get_env/1, get_env/2]).
--export([get_leader/1, is_leader/1, is_leader/2]).
+-export([get_cluster_leader/0, get_leader/1, is_leader/1, is_leader/2]).
 
 -define(APP, ?MODULE).
 
@@ -26,12 +26,13 @@ get_leader(Key) ->
     DocIdx   = riak_core_util:chash_key(Key),
     Preflist = riak_governor_util:get_primary_apl(DocIdx),
     Nodes    = lists:usort([PrefNode || {{_Index, PrefNode}, _Type} <- Preflist]),
-    case Nodes of
-        [Node] -> {ok, Node};
-        _      ->
-            Name = riak_governor_util:ensemble_name(Nodes),
-            find_leader(Name, Nodes)
-    end.
+    Name     = riak_governor_util:ensemble_name(Nodes),
+    find_leader(Name, Nodes).
+
+get_cluster_leader() ->
+    Nodes = riak_governor_util:get_cluster_nodes(),
+    Name  = riak_governor_util:ensemble_name(Nodes),
+    find_leader(Name, Nodes).
 
 is_leader(Key) ->
     is_leader(node(), Key).
@@ -45,11 +46,13 @@ is_leader(Node, Key) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+find_leader(_Name, [Node]) ->
+    {ok, Node};
 find_leader(Name, Nodes) ->
     do_find_leader(ordsets:is_element(node(), Nodes), Name, Nodes).
 
 do_find_leader(_IsLocal, _Name, []) ->
-    {error, no_leader};
+    {error, noproc};
 do_find_leader(true, Name, Nodes) ->
     case catch rafter:get_leader(Name) of
         {'EXIT', {noproc, _}} ->

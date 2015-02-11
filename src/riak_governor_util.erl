@@ -4,6 +4,7 @@
 
 -export([get_ensemble_size/0, ensemble_name/1]).
 -export([get_primary_apl/1]).
+-export([get_cluster_nodes/0]).
 
 get_ensemble_size() ->
     riak_governor:get_env(ensemble_size, ?DEFAULT_ENSEMBLE_SIZE).
@@ -17,3 +18,7 @@ get_primary_apl(DocIdx) ->
     {ok, CHBin} = riak_core_ring_manager:get_chash_bin(),
     riak_core_apl:get_primary_apl_chbin(DocIdx, N, CHBin,
                                         riak_core_ring:all_members(Ring)).
+
+get_cluster_nodes() ->
+    {ok, Ring} = riak_core_ring_manager:get_raw_ring(),
+    lists:usort(riak_core_ring:all_members(Ring)).
