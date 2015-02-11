@@ -1,8 +1,6 @@
 -module(riak_governor_ensemble_master).
 -behaviour(gen_server).
 
--include_lib("rafter/include/rafter_opts.hrl").
-
 %% API
 -export([ring_changed/0]).
 -export([start_link/0]).
@@ -105,16 +103,4 @@ ensemble_started(Nodes) ->
 start_ensemble(Nodes) ->
     EnsembleName = riak_governor_util:ensemble_name(Nodes),
     Peers = lists:map(fun(Node) -> {EnsembleName, Node} end, Nodes),
-    start_node(EnsembleName, Peers).
-
-start_node(Name, Peers) ->
-    % TODO: configurable logdir
-    Me = {Name, node()},
-    Opts = #rafter_opts{state_machine=rafter_backend_ets, logdir="./data"},
-    case rafter:start_node(Me, Opts) of
-        {ok, _} ->
-            catch rafter:set_config(Name, Peers),
-            ok;
-        {error,{already_started,_}} ->
-            ok
-    end.
+    riak_governor_spi:start_ensemble(EnsembleName, Peers).
