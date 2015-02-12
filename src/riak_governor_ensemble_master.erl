@@ -77,6 +77,9 @@ ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
     Ensembles = [ClusterNodes|Ensembles0],
     [ensure_ensemble_started(Nodes) || Nodes <- Ensembles].
 
+ensure_ensemble_started([_]) ->
+    % do not create an ensemble for group of one
+    ok;
 ensure_ensemble_started(Nodes) ->
     ShouldStart    = ordsets:is_element(node(), Nodes),
     AlreadyStarted = ensemble_started(Nodes),
@@ -94,8 +97,7 @@ all_ensembles(Size) ->
     {ok, Ring} = riak_core_ring_manager:get_my_ring(),
     AllPrefs = riak_core_ring:all_preflists(Ring, Size),
     PrefGroups = lists:foldl(GroupF, sets:new(), AllPrefs),
-    Ensembles = sets:to_list(PrefGroups),
-    lists:filter(fun(Nodes) -> length(Nodes) > 1 end, Ensembles).
+    sets:to_list(PrefGroups).
 
 add_ensemble_to_index(Nodes) ->
     ets:insert(?MODULE, {Nodes, riak_governor_util:ensemble_name(Nodes)}).

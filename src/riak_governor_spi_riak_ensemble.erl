@@ -6,6 +6,8 @@
 -export([get_leader/1]).
 -export([start_ensemble/2]).
 
+get_leader({Id, _Node}) ->
+    get_leader(Id);
 get_leader(Id) ->
     riak_ensemble_manager:get_leader(Id).
 

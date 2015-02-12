@@ -2,14 +2,14 @@
 
 -export([start/0, stop/0]).
 -export([get_env/1, get_env/2]).
--export([get_cluster_leader/0, get_leader/1, is_leader/1, is_leader/2]).
+-export([get_leader/1, is_leader/1, is_leader/2]).
+-export([get_cluster_leader/0, is_global_leader/0, is_global_leader/1]).
 
 -define(APP, ?MODULE).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 start() ->
     reltool_util:application_start(?APP).
 
@@ -29,16 +29,25 @@ get_leader(Key) ->
     Name     = riak_governor_util:ensemble_name(Nodes),
     find_leader(Name, Nodes).
 
-get_cluster_leader() ->
-    Nodes = riak_governor_util:get_cluster_nodes(),
-    Name  = riak_governor_util:ensemble_name(Nodes),
-    find_leader(Name, Nodes).
-
 is_leader(Key) ->
     is_leader(node(), Key).
 
 is_leader(Node, Key) ->
     case get_leader(Key) of
+        {ok, Node} -> true;
+        _ -> false
+    end.
+
+get_cluster_leader() ->
+    Nodes = riak_governor_util:get_cluster_nodes(),
+    Name  = riak_governor_util:ensemble_name(Nodes),
+    find_leader(Name, Nodes).
+
+is_global_leader() ->
+    is_global_leader(node()).
+
+is_global_leader(Node) ->
+    case get_cluster_leader() of
         {ok, Node} -> true;
         _ -> false
     end.

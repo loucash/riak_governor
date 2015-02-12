@@ -62,4 +62,5 @@ or pull request. Thank you!
 ## Authors
 
 - Lukasz Biedrycki / @loucash: current implementation
-- Darach Ennis / @darach: came up with the name (thank you)
+- Darach Ennis / @darach: came up with the name, implementation of pluggable
+  consensus providers
