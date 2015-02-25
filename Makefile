@@ -80,9 +80,9 @@ rel: all
 relclean:
 	rm -rf rel/riak_governor
 
-devrel: dev1 dev2 dev3
+devrel: dev1 dev2 dev3 dev4
 
-dev1 dev2 dev3:
+dev1 dev2 dev3 dev4:
 	mkdir -p dev
 	(cd rel && rebar generate target_dir=../dev/$@ overlay_vars=vars/$@.config)
 
