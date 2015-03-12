@@ -18,6 +18,8 @@
           ringhash      :: binary()
          }).
 
+-define(RETRY_DELAY, 1000).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -48,11 +50,23 @@ handle_cast(ring_changed, #state{ringhash=RingHash}=State) ->
         RingHash ->
             {noreply, State};
         NewRingHash ->
-            ensure_ensembles_started(State),
+            case ensure_ensembles_started(State) of
+                ok -> ignore;
+                {error, Error} ->
+                    % schedule another ensemble start attempt
+                    error_logger:error_msg("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, ?RETRY_DELAY]),
+                    timer:apply_after(?RETRY_DELAY, ?MODULE, ring_changed, [])
+            end,
             {noreply, State#state{ringhash=NewRingHash}}
     end;
 handle_cast(init_ensembles, State) ->
-    ensure_ensembles_started(State),
+    case ensure_ensembles_started(State) of
+        ok -> ignore;
+        {error, Error} ->
+            % schedule another ensemble start attempt
+            error_logger:error_msg("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, ?RETRY_DELAY]),
+            timer:apply_after(?RETRY_DELAY, ?MODULE, ring_changed, [])
+    end,
     {noreply, State}.
 
 handle_info(_Msg, State) ->
@@ -75,7 +89,12 @@ ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
     Ensembles0 = all_ensembles(EnsembleSize),
     ClusterNodes = riak_governor_util:get_cluster_nodes(),
     Ensembles = [ClusterNodes|Ensembles0],
-    [ensure_ensemble_started(Nodes) || Nodes <- Ensembles].
+    Res = [ensure_ensemble_started(Nodes) || Nodes <- Ensembles],
+    % validate all results are ok
+    case lists:usort(Res) of
+        [ok] -> ok;
+        _ -> {error, {unexpected_ensemble_start_results, Res}}
+    end.
 
 ensure_ensemble_started([_]) ->
     % do not create an ensemble for group of one
@@ -83,8 +102,16 @@ ensure_ensemble_started([_]) ->
 ensure_ensemble_started(Nodes) ->
     ShouldStart    = ordsets:is_element(node(), Nodes),
     AlreadyStarted = ensemble_started(Nodes),
-    ShouldStart andalso not AlreadyStarted andalso start_ensemble(Nodes),
-    add_ensemble_to_index(Nodes).
+    case ShouldStart andalso not AlreadyStarted of
+        true ->
+            case start_ensemble(Nodes) of
+                ok ->
+                    add_ensemble_to_index(Nodes),
+                    ok;
+                Other -> Other
+            end;
+        false -> ok
+    end.
 
 %% Determine the set of ensembles. Currently, there is one ensemble of each
 %% unique set of preflist owning nodes.
