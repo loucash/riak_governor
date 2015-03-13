@@ -12,6 +12,5 @@ get_leader(Id) ->
     riak_ensemble_manager:get_leader(Id).
 
 start_ensemble(Name,Peers) ->
-    riak_ensemble_manager:create_ensemble(Name, {Name,node()}, Peers, ?ENSEMBLE_BACKEND, []),
-    ok.
+    riak_ensemble_manager:create_ensemble(Name, {Name,node()}, Peers, ?ENSEMBLE_BACKEND, []).
 
