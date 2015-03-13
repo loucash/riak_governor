@@ -50,23 +50,11 @@ handle_cast(ring_changed, #state{ringhash=RingHash}=State) ->
         RingHash ->
             {noreply, State};
         NewRingHash ->
-            case ensure_ensembles_started(State) of
-                ok -> ignore;
-                {error, Error} ->
-                    % schedule another ensemble start attempt
-                    error_logger:error_msg("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, ?RETRY_DELAY]),
-                    timer:apply_after(?RETRY_DELAY, ?MODULE, ring_changed, [])
-            end,
+            try_start_ensembles(State),
             {noreply, State#state{ringhash=NewRingHash}}
     end;
 handle_cast(init_ensembles, State) ->
-    case ensure_ensembles_started(State) of
-        ok -> ignore;
-        {error, Error} ->
-            % schedule another ensemble start attempt
-            error_logger:error_msg("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, ?RETRY_DELAY]),
-            timer:apply_after(?RETRY_DELAY, ?MODULE, ring_changed, [])
-    end,
+    try_start_ensembles(State),
     {noreply, State}.
 
 handle_info(_Msg, State) ->
@@ -84,6 +72,16 @@ code_change(_OldVsn, State, _Extra) ->
 get_ring_hash() ->
     {ok, Ring} = riak_core_ring_manager:get_my_ring(),
     crypto:hash(md5, term_to_binary(Ring)).
+
+try_start_ensembles(State) ->
+    case ensure_ensembles_started(State) of
+        ok -> ignore;
+        {error, Error} ->
+            % schedule another ensemble start attempt
+            lager:debug("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, ?RETRY_DELAY]),
+            RetryDelay = application:get_env(riak_governor, ensemble_creation_retry_delay, ?RETRY_DELAY),
+            timer:apply_after(RetryDelay, ?MODULE, ring_changed, [])
+    end.
 
 ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
     Ensembles0 = all_ensembles(EnsembleSize),
