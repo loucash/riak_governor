@@ -98,13 +98,18 @@ ensure_ensemble_started([_]) ->
     % do not create an ensemble for group of one
     ok;
 ensure_ensemble_started(Nodes) ->
-    Fns = [
-           fun() -> is_local_ensemble(Nodes) end,
-           fun() -> ensemble_started(Nodes) end,
-           fun() -> start_ensemble(Nodes) end,
-           fun() -> add_ensemble_to_index(Nodes) end
-          ],
-    riak_governor_util:whileok(Fns).
+    ShouldStart    = ordsets:is_element(node(), Nodes),
+    AlreadyStarted = ensemble_started(Nodes),
+    case ShouldStart andalso not AlreadyStarted of
+        true ->
+            case start_ensemble(Nodes) of
+                ok ->
+                    add_ensemble_to_index(Nodes),
+                    ok;
+                Other -> Other
+            end;
+        false -> ok
+    end.
 
 %% Determine the set of ensembles. Currently, there is one ensemble of each
 %% unique set of preflist owning nodes.
@@ -124,9 +129,6 @@ add_ensemble_to_index(Nodes) ->
 
 ensemble_started(Nodes) ->
     ets:lookup(?MODULE, Nodes) =/= [].
-
-is_local_ensemble(Nodes) ->
-    ordsets:is_element(node(), Nodes).
 
 start_ensemble(Nodes) ->
     EnsembleName = riak_governor_util:ensemble_name(Nodes),

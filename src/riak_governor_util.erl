@@ -5,7 +5,6 @@
 -export([get_ensemble_size/0, get_ensemble_provider/0, ensemble_name/1]).
 -export([get_primary_apl/1]).
 -export([get_cluster_nodes/0]).
--export([whileok/1]).
 
 get_ensemble_size() ->
     riak_governor:get_env(ensemble_size, ?DEFAULT_ENSEMBLE_SIZE).
@@ -26,17 +25,3 @@ get_primary_apl(DocIdx) ->
 get_cluster_nodes() ->
     {ok, Ring} = riak_core_ring_manager:get_raw_ring(),
     lists:usort(riak_core_ring:all_members(Ring)).
-
-whileok([]) ->
-    ok;
-whileok([Fn|Fns]) ->
-    case Fn() of
-        ok ->
-            whileok(Fns);
-        true ->
-            whileok(Fns);
-        {ok, _} ->
-            whileok(Fns);
-        Other ->
-            Other
-    end.
