@@ -12,5 +12,14 @@ get_leader(Id) ->
     riak_ensemble_manager:get_leader(Id).
 
 start_ensemble(Name,Peers) ->
-    riak_ensemble_manager:create_ensemble(Name, {Name,node()}, Peers, ?ENSEMBLE_BACKEND, []).
-
+    % since ensemble creation might return failure/timeout and YET actually succeed,
+    % hence check ensemble isn't created already before recreating
+    case riak_ensemble_manager:known_ensembles() of
+        {ok, Known} ->
+            case proplists:is_defined(Name, Known) of
+                true -> ok;
+                false -> riak_ensemble_manager:create_ensemble(Name, {Name,node()}, Peers, ?ENSEMBLE_BACKEND, [])
+            end;
+        Other ->
+            Other
+    end.

@@ -3,6 +3,7 @@
 
 %% API
 -export([ring_changed/0]).
+-export([ensure_ensembles/0]).
 -export([start_link/0]).
 
 %% gen_server callbacks
@@ -15,16 +16,21 @@
 
 -record(state, {
           ensemble_size :: pos_integer(),
-          ringhash      :: binary()
+          ringhash      :: binary(),
+          retry_backoff :: backoff:backoff()
          }).
 
--define(RETRY_DELAY, 1000).
+-define(RETRY_DELAY_MIN, 100).
+-define(RETRY_DELAY_MAX, 10000).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 ring_changed() ->
     gen_server:cast(?MODULE, ring_changed).
+
+ensure_ensembles() ->
+    gen_server:cast(?MODULE, ensure_ensembles).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -37,9 +43,12 @@ init([]) ->
     EnsembleSize = riak_governor_util:get_ensemble_size(),
     RingHash = get_ring_hash(),
     _ = ets:new(?MODULE, [named_table, public]),
-    timer:apply_after(500, gen_server, cast, [?MODULE, init_ensembles]),
+    timer:apply_after(?RETRY_DELAY_MIN, gen_server, cast, [?MODULE, ensure_ensembles]),
+    RetryDelayMin = application:get_env(riak_governor, ensemble_creation_retry_delay_min, ?RETRY_DELAY_MIN),
+    RetryDelayMax = application:get_env(riak_governor, ensemble_creation_retry_delay_max, ?RETRY_DELAY_MAX),
     {ok, #state{ensemble_size=EnsembleSize,
-                ringhash=RingHash}}.
+                ringhash=RingHash,
+                retry_backoff=backoff:init(RetryDelayMin, RetryDelayMax)}}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -50,12 +59,12 @@ handle_cast(ring_changed, #state{ringhash=RingHash}=State) ->
         RingHash ->
             {noreply, State};
         NewRingHash ->
-            try_start_ensembles(State),
-            {noreply, State#state{ringhash=NewRingHash}}
+            State2 = try_start_ensembles(State),
+            {noreply, State2#state{ringhash=NewRingHash}}
     end;
-handle_cast(init_ensembles, State) ->
-    try_start_ensembles(State),
-    {noreply, State}.
+handle_cast(ensure_ensembles, State) ->
+    State2 = try_start_ensembles(State),
+    {noreply, State2}.
 
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -73,14 +82,17 @@ get_ring_hash() ->
     {ok, Ring} = riak_core_ring_manager:get_my_ring(),
     crypto:hash(md5, term_to_binary(Ring)).
 
-try_start_ensembles(State) ->
+try_start_ensembles(#state{retry_backoff=Backoff}=State) ->
     case ensure_ensembles_started(State) of
-        ok -> ignore;
+        ok ->
+            {_, Backoff2} = backoff:succeed(Backoff),
+            State#state{retry_backoff=Backoff2};
         {error, Error} ->
             % schedule another ensemble start attempt
-            lager:debug("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, ?RETRY_DELAY]),
-            RetryDelay = application:get_env(riak_governor, ensemble_creation_retry_delay, ?RETRY_DELAY),
-            timer:apply_after(RetryDelay, ?MODULE, ring_changed, [])
+            {RetryDelay, Backoff2} = backoff:fail(Backoff),
+            lager:debug("Failed to create ensembles due to: ~p, will retry in ~bms", [Error, RetryDelay]),
+            timer:apply_after(RetryDelay, ?MODULE, ensure_ensembles, []),
+            State#state{retry_backoff=Backoff2}
     end.
 
 ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
