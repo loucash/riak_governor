@@ -4,8 +4,8 @@
 @darach
 
 riak_governor is an extension to riak_core that provides a simple api to check a
-leader of the unique set of preflist owning nodes. It uses rafter underneath
-for leader election.
+leader of the unique set of preflist owning nodes. It uses rafter or
+riak_ensemble underneath for leader election. This work is **experimental**.
 
 When application starts and on each ring change event riak_governor determines the set of
 ensembles. There is one ensemble of each unique set of proflist owning nodes.
@@ -61,6 +61,8 @@ or pull request. Thank you!
 
 ## Authors
 
-- Lukasz Biedrycki / @loucash: current implementation
+- Lukasz Biedrycki / @loucash: initial implementation
 - Darach Ennis / @darach: came up with the name, implementation of pluggable
   consensus providers
+- Konrad Sosnowski / @konrads: working hard to make riak_ensemble plugin working
+- Heinz N. Gies / @Licenser: riak_governor [tests](https://github.com/Licenser/governor_test)

@@ -43,9 +43,9 @@ init([]) ->
     EnsembleSize = riak_governor_util:get_ensemble_size(),
     RingHash = get_ring_hash(),
     _ = ets:new(?MODULE, [named_table, public]),
-    timer:apply_after(?RETRY_DELAY_MIN, gen_server, cast, [?MODULE, ensure_ensembles]),
-    RetryDelayMin = application:get_env(riak_governor, ensemble_creation_retry_delay_min, ?RETRY_DELAY_MIN),
-    RetryDelayMax = application:get_env(riak_governor, ensemble_creation_retry_delay_max, ?RETRY_DELAY_MAX),
+    timer:apply_after(?RETRY_DELAY_MIN, ?MODULE, ensure_ensembles, []),
+    RetryDelayMin = riak_governor:get_env(ensemble_creation_retry_delay_min, ?RETRY_DELAY_MIN),
+    RetryDelayMax = riak_governor:get_env(ensemble_creation_retry_delay_max, ?RETRY_DELAY_MAX),
     {ok, #state{ensemble_size=EnsembleSize,
                 ringhash=RingHash,
                 retry_backoff=backoff:init(RetryDelayMin, RetryDelayMax)}}.
@@ -99,9 +99,12 @@ ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
     Ensembles0 = all_ensembles(EnsembleSize),
     ClusterNodes = riak_governor_util:get_cluster_nodes(),
     Ensembles = [ClusterNodes|Ensembles0],
-    Res = [ensure_ensemble_started(Nodes) || Nodes <- Ensembles],
+    Res = [ensure_ensemble_started(Nodes) || Nodes <- Ensembles,
+                                             is_local_ensemble(Nodes),
+                                             not ensemble_started(Nodes)],
     % validate all results are ok
     case lists:usort(Res) of
+        [] -> ok;
         [ok] -> ok;
         _ -> {error, {unexpected_ensemble_start_results, Res}}
     end.
@@ -110,17 +113,11 @@ ensure_ensemble_started([_]) ->
     % do not create an ensemble for group of one
     ok;
 ensure_ensemble_started(Nodes) ->
-    ShouldStart    = ordsets:is_element(node(), Nodes),
-    AlreadyStarted = ensemble_started(Nodes),
-    case ShouldStart andalso not AlreadyStarted of
-        true ->
-            case start_ensemble(Nodes) of
-                ok ->
-                    add_ensemble_to_index(Nodes),
-                    ok;
-                Other -> Other
-            end;
-        false -> ok
+    case start_ensemble(Nodes) of
+        ok ->
+            add_ensemble_to_index(Nodes);
+        Other ->
+            Other
     end.
 
 %% Determine the set of ensembles. Currently, there is one ensemble of each
@@ -137,10 +134,14 @@ all_ensembles(Size) ->
     sets:to_list(PrefGroups).
 
 add_ensemble_to_index(Nodes) ->
-    ets:insert(?MODULE, {Nodes, riak_governor_util:ensemble_name(Nodes)}).
+    true = ets:insert(?MODULE, {Nodes, riak_governor_util:ensemble_name(Nodes)}),
+    ok.
 
 ensemble_started(Nodes) ->
     ets:lookup(?MODULE, Nodes) =/= [].
+
+is_local_ensemble(Nodes) ->
+    ordsets:is_element(node(), Nodes).
 
 start_ensemble(Nodes) ->
     EnsembleName = riak_governor_util:ensemble_name(Nodes),
