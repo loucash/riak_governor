@@ -1,0 +1,5 @@
+script: make all && make dialyzer-travis
+
+language: erlang
+otp_release:
+    - R16B02

@@ -88,3 +88,14 @@ dev1 dev2 dev3 dev4:
 
 devclean:
 	rm -rf dev
+
+dialyze/dialyzer_plt:
+	mkdir -p dialyze
+	curl -L "https://github.com/esl/erlang-plts/blob/master/plts/travis-erlang-r16b02.plt?raw=true" -o dialyze/dialyzer_plt
+	cp dialyze/dialyzer_plt /home/travis/.dialyzer_plt
+
+/home/travis/.dialyzer_plt:
+	cp dialyze/dialyzer_plt /home/travis/.dialyzer_plt
+
+dialyzer-travis: dialyze/dialyzer_plt /home/travis/.dialyzer_plt
+	@dialyzer $(DIALYZER_OPTS) -r ebin
