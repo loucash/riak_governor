@@ -1,5 +1,7 @@
 # riak_governor
 
+[![Build Status](https://travis-ci.org/loucash/riak_governor.svg?branch=master)](https://travis-ci.org/loucash/riak_governor)
+
 "What's an ensemble of leaders? A riak_governor. Because there can be only one redundant source of truth"
 @darach
 
