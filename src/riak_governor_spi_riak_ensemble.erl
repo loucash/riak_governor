@@ -5,6 +5,7 @@
 
 -export([get_leader/1]).
 -export([start_ensemble/2]).
+-export([stop_ensemble/1]).
 
 get_leader({Id, _Node}) ->
     get_leader(Id);
@@ -23,3 +24,6 @@ start_ensemble(Name,Peers) ->
         Other ->
             Other
     end.
+
+stop_ensemble(_Name) ->
+    ok.

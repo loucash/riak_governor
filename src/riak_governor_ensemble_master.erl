@@ -96,18 +96,27 @@ try_start_ensembles(#state{retry_backoff=Backoff}=State) ->
     end.
 
 ensure_ensembles_started(#state{ensemble_size=EnsembleSize}) ->
-    Ensembles0 = all_ensembles(EnsembleSize),
-    ClusterNodes = riak_governor_util:get_cluster_nodes(),
-    Ensembles = [ClusterNodes|Ensembles0],
-    Res = [ensure_ensemble_started(Nodes) || Nodes <- Ensembles,
-                                             is_local_ensemble(Nodes),
-                                             not ensemble_started(Nodes)],
+    RingEnsembles  = ring_ensembles(EnsembleSize),
+    StopEnsembles  = ensembles_to_stop(RingEnsembles),
+    _ = lists:foreach(fun stop_ensemble/1, StopEnsembles),
+
+    StartEnsembles = ensembles_to_start(RingEnsembles),
+    Res = lists:map(fun ensure_ensemble_started/1, StartEnsembles),
     % validate all results are ok
     case lists:usort(Res) of
         [] -> ok;
         [ok] -> ok;
         _ -> {error, {unexpected_ensemble_start_results, Res}}
     end.
+
+ensembles_to_start(RingEnsembles) ->
+    [Ensemble || Ensemble <- RingEnsembles,
+                 is_local_ensemble(Ensemble),
+                 not ensemble_started(Ensemble)].
+
+ensembles_to_stop(RingEnsembles) ->
+    Existing = [Ensemble || {Ensemble, _} <- ets:tab2list(?MODULE)],
+    Existing -- RingEnsembles.
 
 ensure_ensemble_started([_]) ->
     % do not create an ensemble for group of one
@@ -121,17 +130,10 @@ ensure_ensemble_started(Nodes) ->
     end.
 
 %% Determine the set of ensembles. Currently, there is one ensemble of each
-%% unique set of preflist owning nodes.
-all_ensembles(Size) ->
-    GroupF = fun(Prefs, Groups) ->
-                     {_Indicies, Nodes} = lists:unzip(Prefs),
-                     Key = lists:usort(Nodes),
-                     sets:add_element(Key, Groups)
-             end,
-    {ok, Ring} = riak_core_ring_manager:get_my_ring(),
-    AllPrefs = riak_core_ring:all_preflists(Ring, Size),
-    PrefGroups = lists:foldl(GroupF, sets:new(), AllPrefs),
-    sets:to_list(PrefGroups).
+%% unique set of preflist owning nodes + one global ensemble.
+ring_ensembles(Size) ->
+    lists:usort([riak_governor_util:get_cluster_nodes() |
+                 riak_governor_util:preflists_ensembles(Size)]).
 
 add_ensemble_to_index(Nodes) ->
     true = ets:insert(?MODULE, {Nodes, riak_governor_util:ensemble_name(Nodes)}),
@@ -147,3 +149,9 @@ start_ensemble(Nodes) ->
     EnsembleName = riak_governor_util:ensemble_name(Nodes),
     Peers = lists:map(fun(Node) -> {EnsembleName, Node} end, Nodes),
     riak_governor_spi:start_ensemble(EnsembleName, Peers).
+
+stop_ensemble(Nodes) ->
+    EnsembleName = riak_governor_util:ensemble_name(Nodes),
+    _ = riak_governor_spi:stop_ensemble(EnsembleName),
+    _ = ets:delete(?MODULE, Nodes),
+    ok.

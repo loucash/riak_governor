@@ -5,6 +5,7 @@
 
 -export([get_leader/1]).
 -export([start_ensemble/2]).
+-export([stop_ensemble/1]).
 
 get_leader(Id) ->
     rafter:get_leader(Id).
@@ -12,7 +13,8 @@ get_leader(Id) ->
 start_ensemble(Name, Peers) ->
     % TODO: configurable logdir
     Me = {Name, node()},
-    Opts = #rafter_opts{state_machine=rafter_backend_ets, logdir="./data"},
+    Opts = #rafter_opts{state_machine=riak_governor_rafter_backend,
+                        logdir="./data"},
     case rafter:start_node(Me, Opts) of
         {ok, _} ->
             catch rafter:set_config(Name, Peers),
@@ -21,3 +23,5 @@ start_ensemble(Name, Peers) ->
             ok
     end.
 
+stop_ensemble(Name) ->
+    rafter:stop_node(Name).
