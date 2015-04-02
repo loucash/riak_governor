@@ -1,6 +1,6 @@
 {application, riak_governor, [
  {description, "Riak leader of the unique set of preflist owning nodes"},
- {vsn, "0.1.2"},
+ {vsn, "0.1.3"},
  {applications, [stdlib, kernel, riak_core, rafter, lager, backoff]},
  {mod, {riak_governor_app, []}}
 ]}.
