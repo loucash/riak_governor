@@ -119,6 +119,12 @@ case "$1" in
         ;;
 
     console|console_clean)
+        # Make sure a node IS running
+        RES=`$NODETOOL ping`
+        if [ "$RES" == "pong" ]; then
+            echo "Node is already running!"
+            exit 1
+        fi
         # .boot file typically just $SCRIPT (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful:
         case "$1" in

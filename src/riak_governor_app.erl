@@ -9,6 +9,8 @@
 start(_StartType, _StartArgs) ->
     case riak_governor_sup:start_link() of
         {ok, Pid} ->
+            ok = riak_core:register([{vnode_module, riak_governor_vnode}]),
+            ok = riak_core_node_watcher:service_up(riak_governor, self()),
             ok = riak_core_ring_events:add_guarded_handler(
                    riak_governor_ring_handler, []),
             {ok, Pid};

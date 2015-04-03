@@ -62,10 +62,8 @@ test-console: test-compile
 
 dev: compile-fast dev-console
 
-dev-clean: cassandra-freya dev
-
 dev-console:
-	$(ERL) -sname $(SNAME) $(EPATH) -s freya -config sys -config riak_core
+	$(ERL) -sname $(SNAME) $(EPATH) -s riak_governor -config sys -config riak_core
 
 spam:
 	@erl -pa deps/*/ebin -pa ebin -config sys -s lager
@@ -83,7 +81,7 @@ relclean:
 devrel: dev1 dev2 dev3 dev4
 
 dev1 dev2 dev3 dev4:
-	mkdir -p dev
+	@mkdir -p dev
 	(cd rel && rebar generate target_dir=../dev/$@ overlay_vars=vars/$@.config)
 
 devclean:
@@ -99,3 +97,8 @@ dialyze/dialyzer_plt:
 
 dialyzer-travis: dialyze/dialyzer_plt /home/travis/.dialyzer_plt
 	@dialyzer $(DIALYZER_OPTS) -r ebin
+
+dist-test: devclean devrel
+	@cd dev && git init && git add -f dev* && git commit -m "initial"
+	rebar -C rebar.dist.config skip_deps=true compile
+	./riak_test -v -c riak_governor -d test -F riak_test.config

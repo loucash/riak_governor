@@ -1,4 +1,12 @@
-script: make all && make dialyzer-travis
+before_script:
+- git config --global user.name "John Doe"
+- git config --global user.email johndoe@example.com
+
+env:
+- TEST_SUITE=dialyzer-travis
+- TEST_SUITE=dist-test
+
+script: make all && make $TEST_SUITE
 
 language: erlang
 otp_release:

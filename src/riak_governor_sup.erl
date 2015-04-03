@@ -23,4 +23,9 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [?CHILD(riak_governor_ensemble_master, worker)]}}.
+    VNode = {riak_governor_vnode_master,
+             {riak_core_vnode_master, start_link, [riak_governor_vnode]},
+             permanent, 5000, worker, [riak_core_vnode_master]},
+    {ok, {{one_for_one, 5, 10},
+          [VNode,
+           ?CHILD(riak_governor_ensemble_master, worker)]}}.
