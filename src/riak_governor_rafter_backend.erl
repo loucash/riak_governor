@@ -8,6 +8,8 @@
 init(_) ->
     ok.
 
+read(ping, State) ->
+    {pong, State};
 read(_Command, State) ->
     {ok, State}.
 

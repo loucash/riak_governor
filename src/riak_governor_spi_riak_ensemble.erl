@@ -8,8 +8,6 @@
 -export([stop_ensemble/1]).
 
 get_leader({Id, _Node}) ->
-    get_leader(Id);
-get_leader(Id) ->
     riak_ensemble_manager:get_leader(Id).
 
 start_ensemble(Name,Peers) ->

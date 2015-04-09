@@ -58,23 +58,25 @@ is_global_leader(Node) ->
 find_leader(_Name, [Node]) ->
     {ok, Node};
 find_leader(Name, Nodes) ->
-    do_find_leader(ordsets:is_element(node(), Nodes), Name, Nodes).
+    case ordsets:is_element(node(), Nodes) of
+        true ->
+            do_find_leader(Name, local_node_first(Nodes));
+        false ->
+            do_find_leader(Name, Nodes)
+    end.
 
-do_find_leader(_IsLocal, _Name, []) ->
+local_node_first(Nodes) ->
+    LocalNode = node(),
+    [LocalNode | Nodes -- [LocalNode]].
+
+do_find_leader(_Name, []) ->
     {error, noproc};
-do_find_leader(true, Name, Nodes) ->
-    case catch riak_governor_spi:get_leader(Name) of
-        {'EXIT', {noproc, _}} ->
-            do_find_leader(false, Name, Nodes -- [node()]);
-        {_, Result} ->
-            {ok, Result};
-        undefined ->
-            {error, no_leader}
-    end;
-do_find_leader(false, Name, [Node|Rest]) ->
+do_find_leader(Name, [Node|Rest]) ->
     case catch riak_governor_spi:get_leader({Name, Node}) of
         {'EXIT', {noproc, _}} ->
-            do_find_leader(false, Name, Rest);
+            do_find_leader(Name, Rest);
+        {'EXIT', {{nodedown,_}, _}} ->
+            do_find_leader(Name, Rest);
         {_, Result} ->
             {ok, Result};
         undefined ->

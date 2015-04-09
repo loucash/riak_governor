@@ -8,7 +8,18 @@
 -export([stop_ensemble/1]).
 
 get_leader(Id) ->
-    rafter:get_leader(Id).
+    case rafter:get_leader(Id) of
+        {_, _} = Leader ->
+            % ensure leader has quorum
+            case rafter:read_op(Leader, ping) of
+                pong ->
+                    Leader;
+                {error, timeout} ->
+                    undefined
+            end;
+        undefined ->
+            undefined
+    end.
 
 start_ensemble(Name, Peers) ->
     % TODO: configurable logdir

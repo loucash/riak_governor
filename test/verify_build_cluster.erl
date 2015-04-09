@@ -64,6 +64,7 @@ confirm() ->
     rt:stop(Node2),
     ?assertEqual(ok, rt:wait_until_unpingable(Node2)),
     wait_and_validate(Nodes, [Node3, Node4]),
+    rt_governor:wait_for_no_leader(Node3),
 
     lager:info("bringing Node 1 up"),
     rt:start(Node1),

@@ -24,6 +24,7 @@ is_leader(Node, ANode, Key) ->
     rpc:call(Node, riak_governor, is_leader, [ANode, Key]).
 
 wait_for_leader(Node) ->
+    lager:info("Wait until cluster leader using ~p", [Node]),
     ok = rt:wait_until(
            fun() ->
                    case get_cluster_leader(Node) of
@@ -33,13 +34,14 @@ wait_for_leader(Node) ->
            end, 30, 200).
 
 wait_for_no_leader(Node) ->
+    lager:info("Wait until no cluster leader using ~p", [Node]),
     ok = rt:wait_until(
            fun() ->
                    case get_cluster_leader(Node) of
                        {error, no_leader} -> true;
                        _ -> false
                    end
-           end, 30, 200).
+           end).
 
 stop(Node) ->
     lager:info("Stopping riak_governor on ~p", [Node]),
